@@ -3,7 +3,7 @@ use std::fs::File;
 use chip8::Chip8;
 fn main() {
     Chip8::setup_graphics();
-    Chip8::setup_intput();
+    Chip8::setup_input();
     let mut my_chip8 = Chip8::new();
     let mut game = File::open("pong").unwrap();
     match my_chip8.load_game(&mut game) {

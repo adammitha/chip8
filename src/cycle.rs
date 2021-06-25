@@ -4,9 +4,10 @@ use std::{u8, usize};
 use crate::Chip8;
 
 impl Chip8 {
-    pub fn fetch(&self) -> u16 {
+    pub fn fetch(&mut self) -> u16 {
         let first = (self.memory[self.pc as usize] as u16) << 8;
         let second = self.memory[(self.pc + 1) as usize] as u16;
+        self.pc += 2;
         first | second
     }
 
@@ -15,7 +16,6 @@ impl Chip8 {
         let ins_op1 = 0x0f00 & self.opcode >> 8;
         let ins_op2 = 0x00f0 & self.opcode >> 4;
         let ins_op3 = 0x000f & self.opcode;
-        let mut increment_pc = true;
         match ins_op0 {
             0x0 => match ins_op1 {
                 0x0 => match ins_op2 {
@@ -24,7 +24,6 @@ impl Chip8 {
                         0xE => {
                             self.pc = self.stack[self.sp as usize];
                             self.sp -= 1;
-                            increment_pc = false;
                         }
                         _ => panic!("Invalid opcode!"),
                     },
@@ -34,13 +33,11 @@ impl Chip8 {
             },
             0x1 => {
                 self.pc = ins_op1 | ins_op2 | ins_op3;
-                increment_pc = false;
             }
             0x2 => {
                 self.stack[self.sp as usize] = self.pc;
                 self.sp += 1;
                 self.pc = ins_op1 | ins_op2 | ins_op3;
-                increment_pc = false;
             }
             0x3 if self.v[ins_op1 as usize] == (ins_op2 | ins_op3) as u8 => {
                 self.pc += 2;
@@ -97,14 +94,43 @@ impl Chip8 {
             0xA => self.i = ins_op1 | ins_op2 | ins_op3,
             0xB => {
                 self.pc = self.v[0] as u16 + (ins_op2 | ins_op3);
-                increment_pc = false;
             }
             0xC => {
                 let num = rand::thread_rng().gen_range(0..255);
                 self.v[ins_op1 as usize] &= num;
             }
-            0xD => todo!("Draw a sprite"),
-            0xE => todo!("Key press"),
+            0xD => {
+                let x = self.v[ins_op1 as usize] as u16;
+                let y = self.v[ins_op2 as usize] as u16;
+                let height = ins_op3;
+                let mut pixel: u16;
+                self.v[0xF] = 0;
+                for yline in 0..height {
+                    pixel = self.memory[(self.i + yline) as usize] as u16;
+                    for xline in 0..8 {
+                        if (pixel & (0x80 >> xline)) != 0 {
+                            if self.gfx[(x + xline + ((y + yline) * 64)) as usize] == 1 {
+                                self.v[0xF] = 1;
+                            }
+                            self.gfx[(x + xline + ((y + yline) * 64)) as usize] ^= 1;
+                        }
+                    }
+                }
+                self.draw_flag = true;
+            }
+            0xE => match ins_op2 | ins_op3 {
+                0x9E => {
+                    if self.key[self.v[ins_op1 as usize] as usize] != 0 {
+                        self.pc += 2;
+                    }
+                }
+                0xA1 => {
+                    if self.key[self.v[ins_op1 as usize] as usize] == 0 {
+                        self.pc += 2;
+                    }
+                }
+                _ => panic!("Invalid opcode!"),
+            },
             0xF => match ins_op2 | ins_op3 {
                 0x07 => self.v[ins_op1 as usize] = self.delay_timer,
                 0x0A => todo!("key press stored in Vx"),
@@ -130,9 +156,6 @@ impl Chip8 {
                 _ => panic!("Invalid opcode!"),
             },
             _ => panic!("Invalid opcode!"),
-        }
-        if increment_pc {
-            self.pc += 2;
         }
     }
 }
