@@ -41,7 +41,7 @@ impl Chip8 {
 
     pub fn load_fontset(&mut self) {
         for (index, &val) in CHIP8_FONTSET.iter().enumerate() {
-            self.memory[index] = val;
+            self.memory[index + 0x50] = val;
         }
     }
 
@@ -71,8 +71,20 @@ impl Chip8 {
         todo!()
     }
 
-    pub fn draw_graphics() -> () {
-        todo!()
+    pub fn draw_graphics(&mut self) -> String {
+        let mut out = String::new();
+        for i in 0..32 {
+            for j in 0..64 {
+                if self.gfx[64 * i + j] == 1 {
+                    out.push_str("▆");
+                } else {
+                    out.push(' ');
+                }
+            }
+            out.push('\n');
+        }
+        self.draw_flag = false;
+        out
     }
 
     pub fn setup_graphics() -> () {

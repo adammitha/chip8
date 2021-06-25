@@ -1,11 +1,11 @@
-use std::fs::File;
-
 use chip8::Chip8;
+use crossterm::{cursor, QueueableCommand};
+use std::fs::File;
+use std::io::{stdout, Write};
 fn main() {
-    Chip8::setup_graphics();
-    Chip8::setup_input();
     let mut my_chip8 = Chip8::new();
-    let mut game = File::open("pong").unwrap();
+    my_chip8.load_fontset();
+    let mut game = File::open("/Users/adammitha/Downloads/IBM Logo.ch8").unwrap();
     match my_chip8.load_game(&mut game) {
         Ok(_) => (),
         Err(_) => todo!("Handle error opening game file"),
@@ -15,9 +15,12 @@ fn main() {
         my_chip8.emulate_cycle();
 
         if my_chip8.draw_flag {
-            Chip8::draw_graphics();
+            let out = my_chip8.draw_graphics();
+            let mut stdout = stdout();
+            stdout.queue(cursor::SavePosition).unwrap();
+            stdout.write(out.as_bytes()).unwrap();
+            stdout.queue(cursor::RestorePosition).unwrap();
+            stdout.flush().unwrap();
         }
-
-        my_chip8.set_keys();
     }
 }
