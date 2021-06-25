@@ -1,6 +1,8 @@
-#[allow(dead_code)]
 mod cycle;
-use std::{u16, u8};
+use std::{
+    io::{self},
+    u16, u8,
+};
 
 /// A Chip8 emulator
 pub struct Chip8 {
@@ -40,8 +42,8 @@ impl Chip8 {
         }
     }
 
-    pub fn load_game(&mut self, game: &str) {
-        todo!()
+    pub fn load_game<T: io::Read>(&mut self, src: &mut T) -> io::Result<usize> {
+        src.read(&mut self.memory[0x200..])
     }
 
     pub fn emulate_cycle(&mut self) {
@@ -49,23 +51,34 @@ impl Chip8 {
         self.opcode = self.fetch();
         // Decode and execute
         self.exec();
+        // Update timers
+        if self.delay_timer > 0 {
+            self.delay_timer -= 1;
+        }
+
+        if self.sound_timer > 0 {
+            if self.sound_timer == 1 {
+                println!("BEEP!");
+            }
+            self.sound_timer -= 1;
+        }
     }
 
     pub fn set_keys(&self) {
         todo!()
     }
-}
 
-pub fn draw_graphics() -> () {
-    todo!()
-}
+    pub fn draw_graphics() -> () {
+        todo!()
+    }
 
-pub fn setup_graphics() -> () {
-    todo!()
-}
+    pub fn setup_graphics() -> () {
+        todo!()
+    }
 
-pub fn setup_intput() -> () {
-    todo!()
+    pub fn setup_intput() -> () {
+        todo!()
+    }
 }
 
 #[cfg(test)]

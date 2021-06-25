@@ -1,4 +1,3 @@
-use core::panic;
 use rand::Rng;
 use std::{u8, usize};
 
@@ -16,20 +15,33 @@ impl Chip8 {
         let ins_op1 = 0x0f00 & self.opcode >> 8;
         let ins_op2 = 0x00f0 & self.opcode >> 4;
         let ins_op3 = 0x000f & self.opcode;
+        let mut increment_pc = true;
         match ins_op0 {
             0x0 => match ins_op1 {
                 0x0 => match ins_op2 {
                     0xE => match ins_op3 {
                         0x0 => todo!("Clear display"),
-                        0xE => todo!("return"),
+                        0xE => {
+                            self.pc = self.stack[self.sp as usize];
+                            self.sp -= 1;
+                            increment_pc = false;
+                        }
                         _ => panic!("Invalid opcode!"),
                     },
                     _ => panic!("Invalid opcode!"),
                 },
                 _ => todo!("Call machine code routine at address NNN"),
             },
-            0x1 => self.pc = ins_op1 | ins_op2 | ins_op3,
-            0x2 => todo!("Calls subroutine at NNN"),
+            0x1 => {
+                self.pc = ins_op1 | ins_op2 | ins_op3;
+                increment_pc = false;
+            }
+            0x2 => {
+                self.stack[self.sp as usize] = self.pc;
+                self.sp += 1;
+                self.pc = ins_op1 | ins_op2 | ins_op3;
+                increment_pc = false;
+            }
             0x3 if self.v[ins_op1 as usize] == (ins_op2 | ins_op3) as u8 => {
                 self.pc += 2;
             }
@@ -52,8 +64,22 @@ impl Chip8 {
                 0x3 => {
                     self.v[ins_op1 as usize] = self.v[ins_op1 as usize] ^ self.v[ins_op2 as usize]
                 }
-                0x4 => todo!("Vx = Vx + Vy"),
-                0x5 => todo!("Vx = Vx - Vy"),
+                0x4 => {
+                    if self.v[ins_op2 as usize] > (0xFF - self.v[ins_op1 as usize]) {
+                        self.v[0xF] = 1;
+                    } else {
+                        self.v[0xF] = 0;
+                    }
+                    self.v[ins_op1 as usize] += self.v[ins_op2 as usize];
+                }
+                0x5 => {
+                    if self.v[ins_op1 as usize] > self.v[ins_op2 as usize] {
+                        self.v[0xF] = 1
+                    } else {
+                        self.v[0xF] = 0;
+                    }
+                    self.v[ins_op1 as usize] -= self.v[ins_op2 as usize];
+                }
                 0x6 => {
                     self.v[0xf] = self.v[ins_op1 as usize] & 0x1;
                     self.v[ins_op1 as usize] = self.v[ins_op1 as usize] >> 1;
@@ -69,7 +95,10 @@ impl Chip8 {
                 self.pc += 2;
             }
             0xA => self.i = ins_op1 | ins_op2 | ins_op3,
-            0xB => self.pc = self.v[0] as u16 + (ins_op2 | ins_op3),
+            0xB => {
+                self.pc = self.v[0] as u16 + (ins_op2 | ins_op3);
+                increment_pc = false;
+            }
             0xC => {
                 let num = rand::thread_rng().gen_range(0..255);
                 self.v[ins_op1 as usize] &= num;
@@ -83,7 +112,11 @@ impl Chip8 {
                 0x18 => self.sound_timer = self.v[ins_op1 as usize],
                 0x1E if ins_op1 != 0xF => self.i += self.v[ins_op1 as usize] as u16,
                 0x29 => todo!("Set i to location of sprite in Vx"),
-                0x33 => todo!("Binary coded decimal of Vx to *i"),
+                0x33 => {
+                    self.memory[self.i as usize] = self.v[ins_op1 as usize] / 100;
+                    self.memory[(self.i + 1) as usize] = (self.v[ins_op1 as usize] / 10) % 10;
+                    self.memory[(self.i + 2) as usize] = (self.v[ins_op1 as usize] % 100) % 10;
+                }
                 0x55 => {
                     for reg in 0 as u16..ins_op1 {
                         self.memory[(self.i + reg) as usize] = self.v[reg as usize];
@@ -98,6 +131,8 @@ impl Chip8 {
             },
             _ => panic!("Invalid opcode!"),
         }
-        self.pc += 2;
+        if increment_pc {
+            self.pc += 2;
+        }
     }
 }
