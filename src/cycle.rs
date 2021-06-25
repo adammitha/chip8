@@ -25,14 +25,14 @@ impl Chip8 {
                             self.draw_flag = true;
                         }
                         0xE => {
-                            self.pc = self.stack[self.sp as usize];
                             self.sp -= 1;
+                            self.pc = self.stack[self.sp as usize];
                         }
-                        _ => panic!("Invalid opcode!"),
+                        _ => panic!("Invalid opcode: {}", self.opcode),
                     },
-                    _ => panic!("Invalid opcode!"),
+                    _ => panic!("Invalid opcode: {}", self.opcode),
                 },
-                _ => todo!("Call machine code routine at address NNN"),
+                _ => panic!("Invalid opcode: {}", self.opcode),
             },
             0x1 => {
                 self.pc = ins_op1 << 8 | ins_op2 << 4 | ins_op3;
@@ -84,23 +84,30 @@ impl Chip8 {
                     self.v[0xf] = self.v[ins_op1 as usize] & 0x1;
                     self.v[ins_op1 as usize] = self.v[ins_op1 as usize] >> 1;
                 }
-                0x7 => todo!("Vx = Vy - Vx"),
+                0x7 => {
+                    if self.v[ins_op2 as usize] > self.v[ins_op1 as usize] {
+                        self.v[0xF] = 1;
+                    } else {
+                        self.v[0xF] = 0;
+                    }
+                    self.v[ins_op2 as usize] -= self.v[ins_op1 as usize];
+                }
                 0xE => {
-                    self.v[0xf] = (self.v[ins_op1 as usize] & (0x1 << 7)) >> 7;
+                    self.v[0xf] = (self.v[ins_op1 as usize] & 0x80) >> 7;
                     self.v[ins_op1 as usize] = self.v[ins_op1 as usize] << 1;
                 }
-                _ => panic!("Invalid opcode!"),
+                _ => panic!("Invalid opcode: {}", self.opcode),
             },
             0x9 if ins_op3 == 0 && self.v[ins_op1 as usize] != self.v[ins_op2 as usize] as u8 => {
                 self.pc += 2;
             }
             0xA => self.i = ins_op1 << 8 | ins_op2 << 4 | ins_op3,
             0xB => {
-                self.pc = self.v[0] as u16 + (ins_op2 << 4 | ins_op3);
+                self.pc = self.v[0] as u16 + (ins_op1 << 8 | ins_op2 << 4 | ins_op3);
             }
             0xC => {
-                let num = rand::thread_rng().gen_range(0..255);
-                self.v[ins_op1 as usize] &= num;
+                let num: u8 = rand::thread_rng().gen_range(0..255);
+                self.v[ins_op1 as usize] = (ins_op2 << 4 | ins_op3) as u8 & num;
             }
             0xD => {
                 let x = (self.v[ins_op1 as usize] % 64) as u16;
@@ -131,33 +138,38 @@ impl Chip8 {
                         self.pc += 2;
                     }
                 }
-                _ => panic!("Invalid opcode!"),
+                _ => panic!("Invalid opcode: {}", self.opcode),
             },
             0xF => match ins_op2 << 4 | ins_op3 {
                 0x07 => self.v[ins_op1 as usize] = self.delay_timer,
                 0x0A => todo!("key press stored in Vx"),
                 0x15 => self.delay_timer = self.v[ins_op1 as usize],
                 0x18 => self.sound_timer = self.v[ins_op1 as usize],
-                0x1E if ins_op1 != 0xF => self.i += self.v[ins_op1 as usize] as u16,
-                0x29 => todo!("Set i to location of sprite in Vx"),
+                0x1E if ins_op1 != 0xF => {
+                    self.i += self.v[ins_op1 as usize] as u16;
+                    if self.i > 0xFFF {
+                        self.v[0xF] = 1
+                    };
+                }
+                0x29 => self.i = ins_op1 * 8,
                 0x33 => {
                     self.memory[self.i as usize] = self.v[ins_op1 as usize] / 100;
                     self.memory[(self.i + 1) as usize] = (self.v[ins_op1 as usize] / 10) % 10;
                     self.memory[(self.i + 2) as usize] = (self.v[ins_op1 as usize] % 100) % 10;
                 }
                 0x55 => {
-                    for reg in 0 as u16..ins_op1 {
+                    for reg in 0 as u16..(ins_op1 + 1) {
                         self.memory[(self.i + reg) as usize] = self.v[reg as usize];
                     }
                 }
                 0x65 => {
-                    for reg in 0 as u16..ins_op1 {
+                    for reg in 0 as u16..(ins_op1 + 1) {
                         self.v[reg as usize] = self.memory[(self.i + reg) as usize];
                     }
                 }
-                _ => panic!("Invalid opcode!"),
+                _ => panic!("Invalid opcode: {}", self.opcode),
             },
-            _ => panic!("Invalid opcode!"),
+            _ => panic!("Invalid opcode: {}", self.opcode),
         }
     }
 }

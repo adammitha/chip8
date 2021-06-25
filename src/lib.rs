@@ -41,7 +41,7 @@ impl Chip8 {
 
     pub fn load_fontset(&mut self) {
         for (index, &val) in CHIP8_FONTSET.iter().enumerate() {
-            self.memory[index + 0x50] = val;
+            self.memory[index] = val;
         }
     }
 
