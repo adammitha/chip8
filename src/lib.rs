@@ -1,4 +1,7 @@
 mod cycle;
+use crossterm::event::{poll, read, Event};
+use crossterm::terminal;
+use std::time::Duration;
 use std::{io, u16, u8};
 
 /// A Chip8 emulator
@@ -15,7 +18,6 @@ pub struct Chip8 {
     /// Graphics
     gfx: [u8; 64 * 32],
     pub draw_flag: bool,
-    key: [u8; 16],
     delay_timer: u8,
     sound_timer: u8,
 }
@@ -33,7 +35,6 @@ impl Chip8 {
             pc: 0x200 as u16,
             gfx: [0 as u8; 64 * 32],
             draw_flag: false,
-            key: [0 as u8; 16],
             delay_timer: 0 as u8,
             sound_timer: 0 as u8,
         }
@@ -67,8 +68,51 @@ impl Chip8 {
         }
     }
 
-    pub fn set_keys(&self) {
-        todo!()
+    pub fn read_key_async(&self) -> Option<usize> {
+        terminal::enable_raw_mode().unwrap();
+        if poll(Duration::from_millis(1)).unwrap() {
+            match read().unwrap() {
+                Event::Key(event) => match event.modifiers {
+                    crossterm::event::KeyModifiers::CONTROL
+                        if event.code == crossterm::event::KeyCode::Char('c') =>
+                    {
+                        std::process::exit(0);
+                    }
+                    _ => match event.code {
+                        crossterm::event::KeyCode::Char(c) if INPUT_KEYS.contains(&c) => {
+                            return INPUT_KEYS.iter().position(|&e| e == c);
+                        }
+                        _ => (),
+                    },
+                },
+                _ => (),
+            };
+        }
+        terminal::disable_raw_mode().unwrap();
+        None
+    }
+
+    pub fn read_key_sync(&self) -> Option<usize> {
+        terminal::enable_raw_mode().unwrap();
+        loop {
+            match read().unwrap() {
+                Event::Key(event) => match event.modifiers {
+                    crossterm::event::KeyModifiers::CONTROL
+                        if event.code == crossterm::event::KeyCode::Char('c') =>
+                    {
+                        std::process::exit(0);
+                    }
+                    _ => match event.code {
+                        crossterm::event::KeyCode::Char(c) if INPUT_KEYS.contains(&c) => {
+                            terminal::disable_raw_mode().unwrap();
+                            return INPUT_KEYS.iter().position(|&e| e == c);
+                        }
+                        _ => (),
+                    },
+                },
+                _ => (),
+            };
+        }
     }
 
     pub fn draw_graphics(&mut self) -> String {
@@ -102,6 +146,11 @@ static CHIP8_FONTSET: [u8; 80] = [
     0xF0, 0x90, 0xF0, 0xF0, 0x10, 0x20, 0x40, 0x40, 0xF0, 0x90, 0xF0, 0x90, 0xF0, 0xF0, 0x90, 0xF0,
     0x10, 0xF0, 0xF0, 0x90, 0xF0, 0x90, 0x90, 0xE0, 0x90, 0xE0, 0x90, 0xE0, 0xF0, 0x80, 0x80, 0x80,
     0xF0, 0xE0, 0x90, 0x90, 0x90, 0xE0, 0xF0, 0x80, 0xF0, 0x80, 0xF0, 0xF0, 0x80, 0xF0, 0x80, 0x80,
+];
+
+static INPUT_KEYS: [char; 16] = [
+    '\x31', '\x32', '\x33', '\x34', '\x71', '\x77', '\x65', '\x72', '\x61', '\x73', '\x64', '\x66',
+    '\x7A', '\x78', '\x63', '\x76',
 ];
 
 #[cfg(test)]
