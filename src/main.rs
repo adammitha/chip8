@@ -1,7 +1,5 @@
 use chip8::Chip8;
-use crossterm::{cursor, QueueableCommand};
 use std::fs::File;
-use std::io::{stdout, Write};
 use std::time::Instant;
 
 fn main() {
@@ -21,13 +19,7 @@ fn main() {
         }
 
         if my_chip8.draw_flag {
-            let out = my_chip8.draw_graphics();
-            let mut stdout = stdout();
-            stdout.queue(cursor::SavePosition).unwrap();
-            stdout.write(out.as_bytes()).unwrap();
-            stdout.queue(cursor::RestorePosition).unwrap();
-            stdout.flush().unwrap();
+            my_chip8.draw_graphics();
         }
-        std::thread::sleep(std::time::Duration::from_millis(5));
     }
 }

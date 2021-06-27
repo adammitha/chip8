@@ -1,3 +1,5 @@
+use crossterm::{cursor, QueueableCommand};
+use std::io::{stdout, Write};
 use std::time::Duration;
 
 use crossterm::{
@@ -55,7 +57,7 @@ impl Chip8 {
         }
     }
 
-    pub fn draw_graphics(&mut self) -> String {
+    pub fn draw_graphics(&mut self) {
         let mut out = String::new();
         for i in 0..32 {
             for j in 0..64 {
@@ -68,7 +70,11 @@ impl Chip8 {
             out.push('\n');
         }
         self.draw_flag = false;
-        out
+        let mut stdout = stdout();
+        stdout.queue(cursor::SavePosition).unwrap();
+        stdout.write(out.as_bytes()).unwrap();
+        stdout.queue(cursor::RestorePosition).unwrap();
+        stdout.flush().unwrap();
     }
 }
 
