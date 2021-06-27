@@ -5,12 +5,10 @@ use std::io::{stdout, Write};
 use std::time::Instant;
 
 fn main() {
+    let args: Vec<String> = std::env::args().collect();
+    let mut game = File::open(&args[1]).unwrap();
     let mut my_chip8 = Chip8::new();
     my_chip8.load_fontset();
-    let mut game = File::open(
-        "/Users/adammitha/Documents/Personal/Development/rust/chip8/games/octojam1title.ch8",
-    )
-    .unwrap();
     my_chip8.load_game(&mut game).unwrap();
 
     loop {
