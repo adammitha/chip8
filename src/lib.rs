@@ -1,7 +1,11 @@
 mod chip8io;
 mod cycle;
 mod duration;
-use std::{io, u16, u8};
+use std::{
+    io,
+    time::{Duration, Instant},
+    u16, u8,
+};
 
 /// A Chip8 emulator
 pub struct Chip8 {
@@ -19,6 +23,7 @@ pub struct Chip8 {
     pub draw_flag: bool,
     delay_timer: u8,
     sound_timer: u8,
+    timer_reset_instance: Instant,
 }
 
 impl Chip8 {
@@ -36,6 +41,7 @@ impl Chip8 {
             draw_flag: false,
             delay_timer: 0 as u8,
             sound_timer: 0 as u8,
+            timer_reset_instance: Instant::now(),
         }
     }
 
@@ -55,15 +61,23 @@ impl Chip8 {
         // Decode and execute
         self.exec();
         // Update timers
-        if self.delay_timer > 0 {
-            self.delay_timer -= 1;
-        }
+        self.update_timers();
+    }
 
-        if self.sound_timer > 0 {
-            if self.sound_timer == 1 {
-                println!("BEEP!");
+    fn update_timers(&mut self) {
+        let now = Instant::now();
+        if now.duration_since(self.timer_reset_instance) > Duration::from_millis(17) {
+            if self.delay_timer > 0 {
+                self.delay_timer -= 1;
             }
-            self.sound_timer -= 1;
+
+            if self.sound_timer > 0 {
+                if self.sound_timer == 1 {
+                    println!("BEEP!");
+                }
+                self.sound_timer -= 1;
+            }
+            self.timer_reset_instance = Instant::now();
         }
     }
 }
