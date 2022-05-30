@@ -51,16 +51,15 @@ impl Chip8 {
         }
     }
 
+    /// Read game file into memory at address 0x200
     pub fn load_game<T: io::Read>(&mut self, src: &mut T) -> io::Result<usize> {
         src.read(&mut self.memory[0x200..])
     }
 
+    /// Execute one CPU cycle
     pub fn emulate_cycle(&mut self) {
-        // Fetch Opcode
         self.opcode = self.fetch();
-        // Decode and execute
         self.exec();
-        // Update timers
         self.update_timers();
     }
 
