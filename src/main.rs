@@ -4,6 +4,10 @@ use std::time::Instant;
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
+    if args.len() < 2 {
+        println!("Please specify the path of the game you wish to play");
+        std::process::exit(1);
+    }
     let mut game = File::open(&args[1]).unwrap();
     let mut my_chip8 = Chip8::new();
     my_chip8.load_fontset();
